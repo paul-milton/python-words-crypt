@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.venv*/
+dist/
+build/
+*.egg-info/
+.cache/
+.DS_Store
+.idea/
+.vscode/
+
+# AI assistant files
+CLAUDE.md
+GEMINI*.md
+LOCAL-*.md
+.claude/
+.nanocli.yaml
+.nanocli/
+
+# BIP39 wordlist caches
+bip-*
+
+# 17711 config
+.17711.yaml
+.17711/

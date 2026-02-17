@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+main() {
+  if command -v poetry >/dev/null 2>&1; then
+    exec poetry run words-crypt "$@"
+  fi
+
+  if command -v words-crypt >/dev/null 2>&1; then
+    exec words-crypt "$@"
+  fi
+
+  echo "ERROR: poetry not found and words-crypt not installed in PATH." >&2
+  echo "Hint: run 'poetry install' then './scripts/words-crypt ...'." >&2
+  exit 1
+}
+
+main "$@"
