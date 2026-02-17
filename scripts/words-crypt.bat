@@ -2,9 +2,12 @@
 @echo off
 setlocal enabledelayedexpansion
 
+set "SCRIPT_DIR=%~dp0"
+set "PROJECT_DIR=%SCRIPT_DIR%.."
+
 where poetry >nul 2>nul
 if %errorlevel%==0 (
-  poetry run words-crypt %*
+  poetry -C "%PROJECT_DIR%" run words-crypt %*
   exit /b %errorlevel%
 )
 

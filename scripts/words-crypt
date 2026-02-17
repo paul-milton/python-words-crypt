@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 main() {
   if command -v poetry >/dev/null 2>&1; then
-    exec poetry run words-crypt "$@"
+    exec poetry -C "$PROJECT_DIR" run words-crypt "$@"
   fi
 
   if command -v words-crypt >/dev/null 2>&1; then

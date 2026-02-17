@@ -5,9 +5,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectDir = Split-Path -Parent $ScriptDir
+
 function Invoke-WordsCrypt {
   if (Get-Command poetry -ErrorAction SilentlyContinue) {
-    & poetry run words-crypt @ArgsRest
+    & poetry -C $ProjectDir run words-crypt @ArgsRest
     exit $LASTEXITCODE
   }
 
