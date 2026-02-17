@@ -5,16 +5,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 main() {
+  # Try the virtualenv Python directly (preserves caller's cwd)
+  local venv_bin
   if command -v poetry >/dev/null 2>&1; then
-    exec poetry -C "$PROJECT_DIR" run words-crypt "$@"
+    venv_bin="$(poetry -C "$PROJECT_DIR" env info -e 2>/dev/null)" || true
+    if [ -n "$venv_bin" ]; then
+      exec "$venv_bin" -m words_crypt.cli "$@"
+    fi
   fi
 
   if command -v words-crypt >/dev/null 2>&1; then
     exec words-crypt "$@"
   fi
 
-  echo "ERROR: poetry not found and words-crypt not installed in PATH." >&2
-  echo "Hint: run 'poetry install' then './scripts/words-crypt ...'." >&2
+  echo "ERROR: poetry virtualenv not found and words-crypt not in PATH." >&2
+  echo "Hint: run 'cd $PROJECT_DIR && poetry install'." >&2
   exit 1
 }
 

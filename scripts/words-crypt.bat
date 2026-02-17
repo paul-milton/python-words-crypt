@@ -7,8 +7,11 @@ set "PROJECT_DIR=%SCRIPT_DIR%.."
 
 where poetry >nul 2>nul
 if %errorlevel%==0 (
-  poetry -C "%PROJECT_DIR%" run words-crypt %*
-  exit /b %errorlevel%
+  for /f "delims=" %%i in ('poetry -C "%PROJECT_DIR%" env info -e 2^>nul') do set "VENV_BIN=%%i"
+  if defined VENV_BIN (
+    "%VENV_BIN%" -m words_crypt.cli %*
+    exit /b %errorlevel%
+  )
 )
 
 where words-crypt >nul 2>nul
@@ -17,6 +20,6 @@ if %errorlevel%==0 (
   exit /b %errorlevel%
 )
 
-echo ERROR: poetry not found and words-crypt not installed in PATH. 1>&2
-echo Hint: run "poetry install" then "poetry run words-crypt ..." 1>&2
+echo ERROR: poetry virtualenv not found and words-crypt not in PATH. 1>&2
+echo Hint: cd "%PROJECT_DIR%" ^& poetry install 1>&2
 exit /b 1

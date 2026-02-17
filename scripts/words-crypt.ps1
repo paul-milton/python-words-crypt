@@ -10,8 +10,11 @@ $ProjectDir = Split-Path -Parent $ScriptDir
 
 function Invoke-WordsCrypt {
   if (Get-Command poetry -ErrorAction SilentlyContinue) {
-    & poetry -C $ProjectDir run words-crypt @ArgsRest
-    exit $LASTEXITCODE
+    $venvBin = & poetry -C $ProjectDir env info -e 2>$null
+    if ($venvBin) {
+      & $venvBin -m words_crypt.cli @ArgsRest
+      exit $LASTEXITCODE
+    }
   }
 
   if (Get-Command words-crypt -ErrorAction SilentlyContinue) {
@@ -19,7 +22,7 @@ function Invoke-WordsCrypt {
     exit $LASTEXITCODE
   }
 
-  Write-Error "poetry not found and words-crypt not installed in PATH. Run: poetry install"
+  Write-Error "poetry virtualenv not found and words-crypt not in PATH. Run: cd $ProjectDir; poetry install"
 }
 
 Invoke-WordsCrypt
