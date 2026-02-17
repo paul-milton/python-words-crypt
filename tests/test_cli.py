@@ -1,20 +1,15 @@
+import hashlib
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from pathlib import Path
 from click.testing import CliRunner
 
 from words_crypt.cli import (
     cli,
-    encrypt_bytes_to_words,
-    decrypt_words_to_bytes,
     SALT_LEN,
     NONCE_LEN,
+    KEY_LEN,
 )
-
-
-@pytest.fixture
-def runner():
-    return CliRunner()
 
 
 FIXED_SALT = b"\x11" * SALT_LEN
@@ -29,74 +24,85 @@ def _mock_urandom(n):
     return b"\x00" * n
 
 
+def _fast_scrypt(password, *, salt, n, r, p, dklen):
+    """Fast KDF mock: sha256 instead of real scrypt."""
+    return hashlib.sha256(password + salt).digest()[:dklen]
+
+
+@pytest.fixture
+def runner():
+    return CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def mock_crypto():
+    """Mock urandom + scrypt for all CLI tests."""
+    with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom), \
+         patch("words_crypt.cli.hashlib.scrypt", side_effect=_fast_scrypt):
+        yield
+
+
+# ── enc-file ──────────────────────────────────────────────────
+
 class TestEncFile:
-    def test_enc_file_stdout(self, runner, tmp_path, fake_wordlist_path):
+    def test_stdout(self, runner, tmp_path, fake_wordlist_path):
         src = tmp_path / "secret.txt"
         src.write_text("secret data", encoding="utf-8")
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "testpass",
-                "enc-file", str(src),
-            ])
-
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "testpass",
+            "enc-file", str(src),
+        ])
         assert result.exit_code == 0
         assert len(result.output.strip().split()) > 0
 
-    def test_enc_file_to_file(self, runner, tmp_path, fake_wordlist_path):
+    def test_to_file(self, runner, tmp_path, fake_wordlist_path):
         src = tmp_path / "input.bin"
         src.write_bytes(b"\x00\x01\x02\x03")
         out = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "pass",
-                "enc-file", str(src), "--out", str(out),
-            ])
-
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "pass",
+            "enc-file", str(src), "--out", str(out),
+        ])
         assert result.exit_code == 0
         assert out.exists()
         assert len(out.read_text(encoding="utf-8").strip()) > 0
 
-    def test_enc_file_from_stdin(self, runner, fake_wordlist_path):
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "testpass",
-                "enc-file",
-            ], input=b"hello from stdin")
+    def test_from_stdin(self, runner, fake_wordlist_path):
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "testpass",
+            "enc-file",
+        ], input=b"hello from stdin")
 
         assert result.exit_code == 0
         assert len(result.output.strip().split()) > 0
 
-    def test_enc_file_preserves_filename(self, runner, tmp_path, fake_wordlist_path):
-        src = tmp_path / "myfile.dat"
-        src.write_bytes(b"data")
-        phrase_file = tmp_path / "phrase.txt"
+    def test_file_not_found(self, runner, fake_wordlist_path):
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "pass",
+            "enc-file", "/nonexistent/file.txt",
+        ])
+        assert result.exit_code != 0
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "pass",
-                "enc-file", str(src), "--out", str(phrase_file),
-            ])
-        assert result.exit_code == 0
 
+# ── dec-file ──────────────────────────────────────────────────
 
 class TestDecFile:
-    def test_dec_file_from_phrase_file(self, runner, tmp_path, fake_wordlist_path):
+    def test_roundtrip_phrase_file(self, runner, tmp_path, fake_wordlist_path):
         src = tmp_path / "original.txt"
         src.write_text("original content", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "pass123",
-                "enc-file", str(src), "--out", str(phrase_file),
-            ])
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "pass123",
+            "enc-file", str(src), "--out", str(phrase_file),
+        ])
         assert result.exit_code == 0
 
         out_file = tmp_path / "recovered.txt"
@@ -108,18 +114,16 @@ class TestDecFile:
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "original content"
 
-    def test_dec_file_to_stdout(self, runner, tmp_path, fake_wordlist_path):
-        src = tmp_path / "data.bin"
-        payload = b"binary payload here"
-        src.write_bytes(payload)
+    def test_to_stdout(self, runner, tmp_path, fake_wordlist_path):
+        src = tmp_path / "data.txt"
+        src.write_text("stdout test", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "pass",
-                "enc-file", str(src), "--out", str(phrase_file),
-            ])
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "pass",
+            "enc-file", str(src), "--out", str(phrase_file),
+        ])
         assert result.exit_code == 0
 
         result = runner.invoke(cli, [
@@ -128,19 +132,18 @@ class TestDecFile:
             "dec-file", "--phrase-file", str(phrase_file),
         ])
         assert result.exit_code == 0
-        assert payload in result.output.encode("latin-1") or payload in result.output.encode("utf-8", errors="surrogateescape")
+        assert b"stdout test" in result.output.encode("latin-1")
 
-    def test_dec_file_stdin_to_file(self, runner, tmp_path, fake_wordlist_path):
+    def test_stdin_to_file(self, runner, tmp_path, fake_wordlist_path):
         src = tmp_path / "input.txt"
         src.write_text("stdin roundtrip", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "p",
-                "enc-file", str(src), "--out", str(phrase_file),
-            ])
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "p",
+            "enc-file", str(src), "--out", str(phrase_file),
+        ])
         assert result.exit_code == 0
 
         phrase_text = phrase_file.read_text(encoding="utf-8")
@@ -153,21 +156,45 @@ class TestDecFile:
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "stdin roundtrip"
 
+    def test_roundtrip_binary(self, runner, tmp_path, fake_wordlist_path):
+        """Roundtrip with binary payload (all byte values)."""
+        src = tmp_path / "binary.bin"
+        payload = bytes(range(256)) * 4
+        src.write_bytes(payload)
+        phrase_file = tmp_path / "phrase.txt"
+
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "binpass",
+            "enc-file", str(src), "--out", str(phrase_file),
+        ])
+        assert result.exit_code == 0
+
+        out_file = tmp_path / "recovered.bin"
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "binpass",
+            "dec-file", "--out-file", str(out_file), "--phrase-file", str(phrase_file),
+        ])
+        assert result.exit_code == 0
+        assert out_file.read_bytes() == payload
+
+
+# ── enc-files ─────────────────────────────────────────────────
 
 class TestEncFiles:
-    def test_enc_files_roundtrip(self, runner, tmp_path, fake_wordlist_path):
+    def test_roundtrip_multiple_files(self, runner, tmp_path, fake_wordlist_path):
         f1 = tmp_path / "a.txt"
         f1.write_text("content A", encoding="utf-8")
         f2 = tmp_path / "b.txt"
         f2.write_text("content B", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "archivepass",
-                "enc-files", str(f1), str(f2), "--out", str(phrase_file),
-            ])
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "archivepass",
+            "enc-files", str(f1), str(f2), "--out", str(phrase_file),
+        ])
         assert result.exit_code == 0
 
         out_dir = tmp_path / "extracted"
@@ -176,23 +203,22 @@ class TestEncFiles:
             "--passphrase", "archivepass",
             "dec-file", "--out-dir", str(out_dir), "--phrase-file", str(phrase_file),
         ])
-        assert result.exit_code == 0, result.output + (result.stderr or "")
+        assert result.exit_code == 0
         assert (out_dir / "a.txt").read_text(encoding="utf-8") == "content A"
         assert (out_dir / "b.txt").read_text(encoding="utf-8") == "content B"
 
-    def test_enc_files_directory(self, runner, tmp_path, fake_wordlist_path):
+    def test_roundtrip_directory(self, runner, tmp_path, fake_wordlist_path):
         sub = tmp_path / "mydir"
         sub.mkdir()
         (sub / "x.txt").write_text("X", encoding="utf-8")
         (sub / "y.txt").write_text("Y", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            result = runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "dirpass",
-                "enc-files", str(sub), "--out", str(phrase_file),
-            ])
+        result = runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "dirpass",
+            "enc-files", str(sub), "--out", str(phrase_file),
+        ])
         assert result.exit_code == 0
 
         out_dir = tmp_path / "out"
@@ -205,17 +231,16 @@ class TestEncFiles:
         assert (out_dir / "mydir" / "x.txt").read_text(encoding="utf-8") == "X"
         assert (out_dir / "mydir" / "y.txt").read_text(encoding="utf-8") == "Y"
 
-    def test_dec_tar_requires_out_dir(self, runner, tmp_path, fake_wordlist_path):
+    def test_tar_requires_out_dir(self, runner, tmp_path, fake_wordlist_path):
         f1 = tmp_path / "a.txt"
         f1.write_text("data", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "pass",
-                "enc-files", str(f1), "--out", str(phrase_file),
-            ])
+        runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "pass",
+            "enc-files", str(f1), "--out", str(phrase_file),
+        ])
 
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
@@ -225,18 +250,19 @@ class TestEncFiles:
         assert result.exit_code != 0
 
 
+# ── errors ────────────────────────────────────────────────────
+
 class TestCliErrors:
     def test_wrong_passphrase(self, runner, tmp_path, fake_wordlist_path):
         src = tmp_path / "file.txt"
         src.write_text("data", encoding="utf-8")
         phrase_file = tmp_path / "phrase.txt"
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            runner.invoke(cli, [
-                "--wordlist", fake_wordlist_path,
-                "--passphrase", "correct",
-                "enc-file", str(src), "--out", str(phrase_file),
-            ])
+        runner.invoke(cli, [
+            "--wordlist", fake_wordlist_path,
+            "--passphrase", "correct",
+            "enc-file", str(src), "--out", str(phrase_file),
+        ])
 
         out_file = tmp_path / "out.txt"
         result = runner.invoke(cli, [

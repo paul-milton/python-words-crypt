@@ -1,4 +1,4 @@
-import struct
+import hashlib
 import pytest
 from unittest.mock import patch
 from cryptography.exceptions import InvalidTag
@@ -13,11 +13,6 @@ from words_crypt.cli import (
 )
 
 
-# For the encode/decode roundtrip to be lossless, the framed data size must
-# produce a pad_bits value of 0 or 8 (i.e. byte-aligned).
-# framed_len = 48 + len(data); need (framed_len * 8) % 11 ∈ {0, 3}.
-# This holds when len(data) ≡ 6 or 7 (mod 11).
-
 FIXED_SALT = b"\x11" * SALT_LEN
 FIXED_NONCE = b"\x22" * NONCE_LEN
 
@@ -28,6 +23,19 @@ def _mock_urandom(n):
     if n == NONCE_LEN:
         return FIXED_NONCE
     return b"\x00" * n
+
+
+def _fast_scrypt(password, *, salt, n, r, p, dklen):
+    """Fast KDF mock: sha256 instead of real scrypt."""
+    return hashlib.sha256(password + salt).digest()[:dklen]
+
+
+@pytest.fixture(autouse=True)
+def mock_crypto():
+    """Mock urandom + scrypt for all crypto tests."""
+    with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom), \
+         patch("words_crypt.cli.hashlib.scrypt", side_effect=_fast_scrypt):
+        yield
 
 
 class TestKdfScrypt:
@@ -56,39 +64,25 @@ class TestKdfScrypt:
 
 class TestEncryptDecrypt:
     def test_roundtrip(self, fake_wordlist_path):
-        # 6 bytes → framed=54 bytes → pad=8 → byte-aligned ✓
         data = b"abcdef"
-        passphrase = "mypass"
+        phrase = encrypt_bytes_to_words(data, "mypass", fake_wordlist_path)
+        assert decrypt_words_to_bytes(phrase, "mypass", fake_wordlist_path) == data
 
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            phrase = encrypt_bytes_to_words(data, passphrase, fake_wordlist_path)
-
-        decrypted = decrypt_words_to_bytes(phrase, passphrase, fake_wordlist_path)
-        assert decrypted == data
-
-    def test_roundtrip_pad0(self, fake_wordlist_path):
-        # 7 bytes → framed=55 bytes → pad=0 → exact fit ✓
-        data = b"abcdefg"
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
+    def test_roundtrip_various_sizes(self, fake_wordlist_path):
+        """Roundtrip works for all payload sizes (padding fix)."""
+        for size in [0, 1, 5, 6, 7, 10, 11, 13, 50, 100, 255]:
+            data = bytes(range(256))[:size] if size <= 256 else b"\xaa" * size
             phrase = encrypt_bytes_to_words(data, "pass", fake_wordlist_path)
-        assert decrypt_words_to_bytes(phrase, "pass", fake_wordlist_path) == data
+            assert decrypt_words_to_bytes(phrase, "pass", fake_wordlist_path) == data, \
+                f"Failed roundtrip for size={size}"
 
-    def test_roundtrip_empty_data(self, fake_wordlist_path):
-        # 0 bytes → framed=48 bytes → 384 bits → 384%11=10 → pad=1
-        # pad=1 is NOT byte-aligned, but empty data means ct is just the 16-byte tag
-        # framed=48, pad=1 → this will fail, use 6 bytes instead
-        # Actually test with b"" through the envelope in CLI tests instead
-        # Here just test that encrypt produces output
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            phrase = encrypt_bytes_to_words(b"", "pass", fake_wordlist_path)
-        assert len(phrase.strip()) > 0
+    def test_roundtrip_empty(self, fake_wordlist_path):
+        phrase = encrypt_bytes_to_words(b"", "pass", fake_wordlist_path)
+        assert decrypt_words_to_bytes(phrase, "pass", fake_wordlist_path) == b""
 
     def test_wrong_passphrase_raises(self, fake_wordlist_path):
-        # 6 bytes → pad=8 → byte-aligned ✓
         data = b"secret"
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            phrase = encrypt_bytes_to_words(data, "correct", fake_wordlist_path)
-
+        phrase = encrypt_bytes_to_words(data, "correct", fake_wordlist_path)
         with pytest.raises(InvalidTag):
             decrypt_words_to_bytes(phrase, "wrong", fake_wordlist_path)
 
@@ -97,12 +91,6 @@ class TestEncryptDecrypt:
             decrypt_words_to_bytes("word0000", "pass", fake_wordlist_path)
 
     def test_large_payload(self, fake_wordlist_path):
-        # 1028 bytes: 1028%11=5, not 6 or 7. Use 1027 (1027%11=4, no).
-        # 1024+6=1030, 1030%11=7 → 1030-11*93=1030-1023=7 ✓
         data = b"\xaa" * 1030
-        passphrase = "bigpass"
-
-        with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom):
-            phrase = encrypt_bytes_to_words(data, passphrase, fake_wordlist_path)
-
-        assert decrypt_words_to_bytes(phrase, passphrase, fake_wordlist_path) == data
+        phrase = encrypt_bytes_to_words(data, "bigpass", fake_wordlist_path)
+        assert decrypt_words_to_bytes(phrase, "bigpass", fake_wordlist_path) == data

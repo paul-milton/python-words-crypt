@@ -399,7 +399,7 @@ def _read_all_stdin_text() -> str:
 
 @cli.command("enc-file", help="Encrypt a single raw file to BIP39 words.")
 @click.argument("file", default="-", type=click.Path(exists=False))
-@click.option("--out-name", default=None, help="Filename stored in envelope header (default: input filename or 'stdin.bin').")
+@click.option("--name", "out_name", default=None, help="Filename stored in envelope header (default: input filename or 'stdin.bin').")
 @click.option("--out", "out_file", default=None, type=click.Path(), help="Output phrase file (default: stdout).")
 @click.pass_context
 def cmd_enc_file(ctx, file, out_name, out_file):
