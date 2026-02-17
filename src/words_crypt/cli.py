@@ -454,11 +454,11 @@ def cmd_enc_file(ctx, file, out_name, out_file, no_zip):
 
 
 @cli.command("dec-file", help="Decrypt BIP39 words back to a raw file or archive.")
+@click.option("--in", "input_file", default=None, type=click.Path(exists=True), help="Input phrase file or zip (default: stdin).")
 @click.option("--out", "out_path", default=None, type=click.Path(), help="Output path: file for raw, directory for tar (default: stdout for raw).")
-@click.option("--phrase-file", default=None, type=click.Path(exists=True), help="Input phrase file or zip (default: stdin).")
 @click.pass_context
-def cmd_dec_file(ctx, out_path, phrase_file):
-    phrase = _read_phrase(phrase_file)
+def cmd_dec_file(ctx, input_file, out_path):
+    phrase = _read_phrase(input_file)
     data = decrypt_words_to_bytes(phrase, _get_passphrase(ctx), _get_wordlist_path(ctx))
     env = WordZipEnvelope.from_bytes(data)
 

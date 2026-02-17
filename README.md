@@ -31,10 +31,10 @@ words-crypt --passphrase "secret" enc-file ./photo.png --out phrase.txt
 cat photo.png | words-crypt --passphrase "secret" enc-file
 
 # Decrypt (→ file)
-words-crypt --passphrase "secret" dec-file --out photo.png --phrase-file phrase.txt.zip
+words-crypt --passphrase "secret" dec-file --out photo.png --in phrase.txt.zip
 
 # Decrypt (→ stdout)
-words-crypt --passphrase "secret" dec-file --phrase-file phrase.txt.zip > photo.png
+words-crypt --passphrase "secret" dec-file --in phrase.txt.zip > photo.png
 
 # Decrypt (stdin → file)
 cat phrase.txt | words-crypt --passphrase "secret" dec-file --out photo.png
@@ -50,7 +50,7 @@ words-crypt --passphrase-file key.txt enc-file photo.png --out phrase.txt
 words-crypt --passphrase "secret" enc-files file1.txt file2.pdf images/ --out phrase.txt
 
 # Decrypt archive into a directory
-words-crypt --passphrase "secret" dec-file --out ./extracted/ --phrase-file phrase.txt.zip
+words-crypt --passphrase "secret" dec-file --out ./extracted/ --in phrase.txt.zip
 ```
 
 ## Wordlist

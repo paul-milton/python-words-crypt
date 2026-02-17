@@ -144,7 +144,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "pass123",
-            "dec-file", "--out", str(out_file), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_file), "--in", str(zip_path),
         ])
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "original content"
@@ -166,7 +166,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "pass123",
-            "dec-file", "--out", str(out_file), "--phrase-file", str(phrase_file),
+            "dec-file", "--out", str(out_file), "--in", str(phrase_file),
         ])
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "original content"
@@ -186,7 +186,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "pass",
-            "dec-file", "--phrase-file", str(phrase_file),
+            "dec-file", "--in", str(phrase_file),
         ])
         assert result.exit_code == 0
         assert b"stdout test" in result.output.encode("latin-1")
@@ -232,7 +232,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "binpass",
-            "dec-file", "--out", str(out_file), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_file), "--in", str(zip_path),
         ])
         assert result.exit_code == 0
         assert out_file.read_bytes() == payload
@@ -260,7 +260,7 @@ class TestEncFiles:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "archivepass",
-            "dec-file", "--out", str(out_dir), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_dir), "--in", str(zip_path),
         ])
         assert result.exit_code == 0
         assert (out_dir / "a.txt").read_text(encoding="utf-8") == "content A"
@@ -285,7 +285,7 @@ class TestEncFiles:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "dirpass",
-            "dec-file", "--out", str(out_dir), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_dir), "--in", str(zip_path),
         ])
         assert result.exit_code == 0
         assert (out_dir / "mydir" / "x.txt").read_text(encoding="utf-8") == "X"
@@ -306,7 +306,7 @@ class TestEncFiles:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "pass",
-            "dec-file", "--phrase-file", str(zip_path),
+            "dec-file", "--in", str(zip_path),
         ])
         assert result.exit_code != 0
 
@@ -330,6 +330,6 @@ class TestCliErrors:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "wrong",
-            "dec-file", "--out", str(out_file), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_file), "--in", str(zip_path),
         ])
         assert result.exit_code != 0
