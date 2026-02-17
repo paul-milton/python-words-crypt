@@ -10,6 +10,7 @@ import struct
 import random
 import hashlib
 import tarfile
+import zipfile
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -397,12 +398,39 @@ def _read_all_stdin_text() -> str:
     return sys.stdin.read()
 
 
+def _write_phrase(phrase: str, out_file: str, no_zip: bool) -> None:
+    """Write phrase to file. Zip by default unless --no-zip."""
+    out_path = Path(out_file)
+    if no_zip:
+        out_path.write_text(phrase, encoding="utf-8")
+    else:
+        if not out_path.suffix == ".zip":
+            out_path = out_path.with_suffix(out_path.suffix + ".zip")
+        with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("phrase.txt", phrase.encode("utf-8"))
+    click.echo(f"Written to {out_path}", err=True)
+
+
+def _read_phrase(phrase_file: Optional[str]) -> str:
+    """Read phrase from file (auto-detects zip) or stdin."""
+    if not phrase_file:
+        return _read_all_stdin_text()
+    p = Path(phrase_file)
+    data = p.read_bytes()
+    if data[:4] == b"PK\x03\x04":
+        with zipfile.ZipFile(io.BytesIO(data), "r") as zf:
+            names = zf.namelist()
+            return zf.read(names[0]).decode("utf-8")
+    return data.decode("utf-8")
+
+
 @cli.command("enc-file", help="Encrypt a single raw file to BIP39 words.")
 @click.argument("file", default="-", type=click.Path(exists=False))
 @click.option("--name", "out_name", default=None, help="Filename stored in envelope header (default: input filename or 'stdin.bin').")
-@click.option("--out", "out_file", default=None, type=click.Path(), help="Output phrase file (default: stdout).")
+@click.option("--out", "out_file", default=None, type=click.Path(), help="Output file (default: stdout). Zipped by default.")
+@click.option("--no-zip", is_flag=True, default=False, help="Write plain text instead of zip.")
 @click.pass_context
-def cmd_enc_file(ctx, file, out_name, out_file):
+def cmd_enc_file(ctx, file, out_name, out_file, no_zip):
     if file == "-":
         data = sys.stdin.buffer.read()
         if out_name is None:
@@ -417,7 +445,7 @@ def cmd_enc_file(ctx, file, out_name, out_file):
     env = WordZipEnvelope(kind="raw", filename=out_name, meta_json=b"{}", payload=data).to_bytes()
     phrase = encrypt_bytes_to_words(env, _get_passphrase(ctx), _get_wordlist_path(ctx))
     if out_file:
-        Path(out_file).write_text(phrase, encoding="utf-8")
+        _write_phrase(phrase, out_file, no_zip)
     else:
         click.echo(phrase)
 
@@ -425,10 +453,10 @@ def cmd_enc_file(ctx, file, out_name, out_file):
 @cli.command("dec-file", help="Decrypt BIP39 words back to a raw file or archive.")
 @click.option("--out-file", default=None, type=click.Path(), help="Output file path (default: stdout for raw, required for tar).")
 @click.option("--out-dir", default=None, type=click.Path(), help="Output directory for tar archives.")
-@click.option("--phrase-file", default=None, type=click.Path(exists=True), help="Input phrase file (default: stdin).")
+@click.option("--phrase-file", default=None, type=click.Path(exists=True), help="Input phrase file or zip (default: stdin).")
 @click.pass_context
 def cmd_dec_file(ctx, out_file, out_dir, phrase_file):
-    phrase = Path(phrase_file).read_text(encoding="utf-8") if phrase_file else _read_all_stdin_text()
+    phrase = _read_phrase(phrase_file)
     data = decrypt_words_to_bytes(phrase, _get_passphrase(ctx), _get_wordlist_path(ctx))
     env = WordZipEnvelope.from_bytes(data)
 
@@ -448,9 +476,10 @@ def cmd_dec_file(ctx, out_file, out_dir, phrase_file):
 
 @cli.command("enc-files", help="Encrypt multiple files/directories into a tar archive as BIP39 words.")
 @click.argument("files", nargs=-1, required=True, type=click.Path(exists=True))
-@click.option("--out", "out_file", default=None, type=click.Path(), help="Output phrase file (default: stdout).")
+@click.option("--out", "out_file", default=None, type=click.Path(), help="Output file (default: stdout). Zipped by default.")
+@click.option("--no-zip", is_flag=True, default=False, help="Write plain text instead of zip.")
 @click.pass_context
-def cmd_enc_files(ctx, files, out_file):
+def cmd_enc_files(ctx, files, out_file, no_zip):
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tf:
         for f in files:
@@ -460,7 +489,7 @@ def cmd_enc_files(ctx, files, out_file):
     env = WordZipEnvelope(kind="tar", filename="archive.tar.gz", meta_json=b"{}", payload=tar_data).to_bytes()
     phrase = encrypt_bytes_to_words(env, _get_passphrase(ctx), _get_wordlist_path(ctx))
     if out_file:
-        Path(out_file).write_text(phrase, encoding="utf-8")
+        _write_phrase(phrase, out_file, no_zip)
     else:
         click.echo(phrase)
 
