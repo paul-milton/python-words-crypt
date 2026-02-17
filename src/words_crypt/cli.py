@@ -454,25 +454,24 @@ def cmd_enc_file(ctx, file, out_name, out_file, no_zip):
 
 
 @cli.command("dec-file", help="Decrypt BIP39 words back to a raw file or archive.")
-@click.option("--out", "out_file", default=None, type=click.Path(), help="Output file path (default: stdout for raw).")
-@click.option("--out-dir", default=None, type=click.Path(), help="Output directory for tar archives.")
+@click.option("--out", "out_path", default=None, type=click.Path(), help="Output path: file for raw, directory for tar (default: stdout for raw).")
 @click.option("--phrase-file", default=None, type=click.Path(exists=True), help="Input phrase file or zip (default: stdin).")
 @click.pass_context
-def cmd_dec_file(ctx, out_file, out_dir, phrase_file):
+def cmd_dec_file(ctx, out_path, phrase_file):
     phrase = _read_phrase(phrase_file)
     data = decrypt_words_to_bytes(phrase, _get_passphrase(ctx), _get_wordlist_path(ctx))
     env = WordZipEnvelope.from_bytes(data)
 
     if env.kind == "tar":
-        if not out_dir:
-            raise click.UsageError("--out-dir is required for tar archives.")
-        out_path = Path(out_dir)
-        out_path.mkdir(parents=True, exist_ok=True)
+        if not out_path:
+            raise click.UsageError("--out is required for tar archives.")
+        dest = Path(out_path)
+        dest.mkdir(parents=True, exist_ok=True)
         with tarfile.open(fileobj=io.BytesIO(env.payload), mode="r:gz") as tf:
-            tf.extractall(path=out_path, filter="data")
+            tf.extractall(path=dest, filter="data")
     else:
-        if out_file:
-            Path(out_file).write_bytes(env.payload)
+        if out_path:
+            Path(out_path).write_bytes(env.payload)
         else:
             sys.stdout.buffer.write(env.payload)
 

@@ -260,7 +260,7 @@ class TestEncFiles:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "archivepass",
-            "dec-file", "--out-dir", str(out_dir), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_dir), "--phrase-file", str(zip_path),
         ])
         assert result.exit_code == 0
         assert (out_dir / "a.txt").read_text(encoding="utf-8") == "content A"
@@ -285,7 +285,7 @@ class TestEncFiles:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "dirpass",
-            "dec-file", "--out-dir", str(out_dir), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_dir), "--phrase-file", str(zip_path),
         ])
         assert result.exit_code == 0
         assert (out_dir / "mydir" / "x.txt").read_text(encoding="utf-8") == "X"

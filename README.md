@@ -50,7 +50,7 @@ words-crypt --passphrase-file key.txt enc-file photo.png --out phrase.txt
 words-crypt --passphrase "secret" enc-files file1.txt file2.pdf images/ --out phrase.txt
 
 # Decrypt archive into a directory
-words-crypt --passphrase "secret" dec-file --out-dir ./extracted/ --phrase-file phrase.txt.zip
+words-crypt --passphrase "secret" dec-file --out ./extracted/ --phrase-file phrase.txt.zip
 ```
 
 ## Wordlist
