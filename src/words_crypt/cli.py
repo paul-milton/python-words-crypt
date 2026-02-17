@@ -373,9 +373,12 @@ class WordZipEnvelope:
 @click.group(help="🐚 words-crypt — (c) 2026, 🐚 The 17711 Frame <https://frame.17711.org>\nEncrypt/decrypt payloads into BIP39 words (default: French).")
 @click.option("--wordlist", default=None, help="Path to wordlist file. If omitted, auto-download + cache.")
 @click.option("--passphrase", default=None, help="Encryption passphrase (prompted if omitted).")
+@click.option("--passphrase-file", default=None, type=click.Path(exists=True), help="Read passphrase from file (first line, stripped).")
 @click.pass_context
-def cli(ctx, wordlist, passphrase):
+def cli(ctx, wordlist, passphrase, passphrase_file):
     ctx.ensure_object(dict)
+    if passphrase_file and not passphrase:
+        passphrase = Path(passphrase_file).read_text(encoding="utf-8").split("\n")[0].strip()
     ctx.obj["wordlist"] = wordlist
     ctx.obj["passphrase"] = passphrase
 
@@ -451,7 +454,7 @@ def cmd_enc_file(ctx, file, out_name, out_file, no_zip):
 
 
 @cli.command("dec-file", help="Decrypt BIP39 words back to a raw file or archive.")
-@click.option("--out-file", default=None, type=click.Path(), help="Output file path (default: stdout for raw, required for tar).")
+@click.option("--out", "out_file", default=None, type=click.Path(), help="Output file path (default: stdout for raw).")
 @click.option("--out-dir", default=None, type=click.Path(), help="Output directory for tar archives.")
 @click.option("--phrase-file", default=None, type=click.Path(exists=True), help="Input phrase file or zip (default: stdin).")
 @click.pass_context

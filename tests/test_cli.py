@@ -144,7 +144,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "pass123",
-            "dec-file", "--out-file", str(out_file), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_file), "--phrase-file", str(zip_path),
         ])
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "original content"
@@ -166,7 +166,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "pass123",
-            "dec-file", "--out-file", str(out_file), "--phrase-file", str(phrase_file),
+            "dec-file", "--out", str(out_file), "--phrase-file", str(phrase_file),
         ])
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "original content"
@@ -208,7 +208,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "p",
-            "dec-file", "--out-file", str(out_file),
+            "dec-file", "--out", str(out_file),
         ], input=phrase_text)
         assert result.exit_code == 0
         assert out_file.read_text(encoding="utf-8") == "stdin roundtrip"
@@ -232,7 +232,7 @@ class TestDecFile:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "binpass",
-            "dec-file", "--out-file", str(out_file), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_file), "--phrase-file", str(zip_path),
         ])
         assert result.exit_code == 0
         assert out_file.read_bytes() == payload
@@ -330,6 +330,6 @@ class TestCliErrors:
         result = runner.invoke(cli, [
             "--wordlist", fake_wordlist_path,
             "--passphrase", "wrong",
-            "dec-file", "--out-file", str(out_file), "--phrase-file", str(zip_path),
+            "dec-file", "--out", str(out_file), "--phrase-file", str(zip_path),
         ])
         assert result.exit_code != 0

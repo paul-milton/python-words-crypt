@@ -24,20 +24,23 @@ poetry install
 # Encrypt (file → stdout)
 words-crypt --passphrase "secret" enc-file ./photo.png
 
-# Encrypt (file → file)
+# Encrypt (file → zip, default)
 words-crypt --passphrase "secret" enc-file ./photo.png --out phrase.txt
 
 # Encrypt (stdin → stdout)
 cat photo.png | words-crypt --passphrase "secret" enc-file
 
 # Decrypt (→ file)
-words-crypt --passphrase "secret" dec-file --out-file photo.png --phrase-file phrase.txt
+words-crypt --passphrase "secret" dec-file --out photo.png --phrase-file phrase.txt.zip
 
 # Decrypt (→ stdout)
-words-crypt --passphrase "secret" dec-file --phrase-file phrase.txt > photo.png
+words-crypt --passphrase "secret" dec-file --phrase-file phrase.txt.zip > photo.png
 
 # Decrypt (stdin → file)
-cat phrase.txt | words-crypt --passphrase "secret" dec-file --out-file photo.png
+cat phrase.txt | words-crypt --passphrase "secret" dec-file --out photo.png
+
+# Passphrase from file
+words-crypt --passphrase-file key.txt enc-file photo.png --out phrase.txt
 ```
 
 ### Multiple files / directories
@@ -47,7 +50,7 @@ cat phrase.txt | words-crypt --passphrase "secret" dec-file --out-file photo.png
 words-crypt --passphrase "secret" enc-files file1.txt file2.pdf images/ --out phrase.txt
 
 # Decrypt archive into a directory
-words-crypt --passphrase "secret" dec-file --out-dir ./extracted/ --phrase-file phrase.txt
+words-crypt --passphrase "secret" dec-file --out-dir ./extracted/ --phrase-file phrase.txt.zip
 ```
 
 ## Wordlist
