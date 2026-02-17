@@ -1,62 +1,68 @@
 # words-crypt
 
-(c) 2026, 🐚 The 17711 Frame <https://frame.17711.org>
+(c) 2026, The 17711 Frame <https://frame.17711.org> — MIT License
 
-Encrypt/decrypt text or binary payloads into **real-looking words** (BIP39 wordlists).
+Encrypt/decrypt files into **real-looking words** from BIP39 wordlists.
 
-- Strong crypto: **ChaCha20-Poly1305** (AEAD)
-- Key derivation: **scrypt**
-- Output: words (default **French** BIP39 list)
-- **Camouflage automatique** : des mots de remplissage (articles, conjonctions, verbes conjugués) sont insérés entre les mots chiffrés pour que la sortie ressemble à du vrai texte. Le déchiffrement les filtre automatiquement.
-- Wordlist download is **dynamic**, **language-selectable**, and **cached**.
+- **ChaCha20-Poly1305** (AEAD) + **scrypt** key derivation
+- Output: words from the **French** BIP39 list (10 languages available)
+- **Camouflage** : filler words (articles, conjunctions, verbs) are inserted between encoded words so the output looks like real French prose. Decryption strips them automatically.
+- Supports **single files**, **multiple files**, and **directories** (tar archives)
+- Full **stdin/stdout** pipe support
 
-## Install (Poetry)
+## Install
 
 ```bash
 poetry install
 ```
 
-## Wordlist download + cache
-
-By default, `words-crypt` downloads the wordlist on first use and caches it:
-
-- Cache dir: `~/.cache/words-crypt/wordlists/`
-- Default language: `french`
-
-### Environment variables
-
-- `WORDS_CRYPT_LANGUAGE`
-  Default: `french`
-  Example: `english`, `italian`, etc. (depends on available list URLs)
-
-- `WORDS_CRYPT_WORDLIST_URL`
-  If set, overrides the download URL entirely.
-
-You can still pass `--wordlist /path/to/list.txt` to force a specific file.
-
 ## Usage
 
-### Encrypt a raw file -> words (stdout)
+### Single file
 
 ```bash
-poetry run words-crypt --passphrase "my secret" enc-file ./image.png
+# Encrypt (file → stdout)
+words-crypt --passphrase "secret" enc-file ./photo.png
+
+# Encrypt (file → file)
+words-crypt --passphrase "secret" enc-file ./photo.png --out phrase.txt
+
+# Encrypt (stdin → stdout)
+cat photo.png | words-crypt --passphrase "secret" enc-file
+
+# Decrypt (→ file)
+words-crypt --passphrase "secret" dec-file --out-file photo.png --phrase-file phrase.txt
+
+# Decrypt (→ stdout)
+words-crypt --passphrase "secret" dec-file --phrase-file phrase.txt > photo.png
+
+# Decrypt (stdin → file)
+cat phrase.txt | words-crypt --passphrase "secret" dec-file --out-file photo.png
 ```
 
-### Encrypt a raw file -> words (file)
+### Multiple files / directories
 
 ```bash
-poetry run words-crypt --passphrase "my secret" enc-file ./image.png --out phrase.txt
+# Encrypt several files into one archive
+words-crypt --passphrase "secret" enc-files file1.txt file2.pdf images/ --out phrase.txt
+
+# Decrypt archive into a directory
+words-crypt --passphrase "secret" dec-file --out-dir ./extracted/ --phrase-file phrase.txt
 ```
 
-### Decrypt words -> raw file
+## Wordlist
 
-```bash
-poetry run words-crypt --passphrase "my secret" dec-file --out-file ./image.png --phrase-file phrase.txt
-```
+By default, the BIP39 wordlist is downloaded on first use and cached in `~/.cache/words-crypt/wordlists/`.
+
+| Variable | Default | Description |
+|---|---|---|
+| `WORDS_CRYPT_LANGUAGE` | `french` | Language: `english`, `italian`, `spanish`, `japanese`, `korean`, `chinese_simplified`, `chinese_traditional`, `czech`, `portuguese` |
+| `WORDS_CRYPT_WORDLIST_URL` | — | Override the download URL entirely |
+
+You can also pass `--wordlist /path/to/list.txt` to use a local file.
 
 ## Notes
 
-- If any word is changed or missing, decryption fails (expected for AEAD).
-- Keep the passphrase safe.
-- BIP39 lists contain exactly **2048 words**.
-- The `--out` option on `enc-file` allows exporting the encrypted text directly to a file instead of stdout.
+- BIP39 lists contain exactly **2048 words**
+- If any word is altered, decryption fails (AEAD integrity)
+- Keep the passphrase safe — there is no recovery mechanism
