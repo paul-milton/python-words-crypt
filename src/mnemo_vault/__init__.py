@@ -1,4 +1,4 @@
-# 🐚 words-crypt — The 17711 Frame
+# 🌀 mnemo-vault — The 17711 Frame
 # MIT License © 2026
 
 __all__ = ["__version__"]

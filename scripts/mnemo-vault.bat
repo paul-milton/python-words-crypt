@@ -9,17 +9,17 @@ where poetry >nul 2>nul
 if %errorlevel%==0 (
   for /f "delims=" %%i in ('poetry -C "%PROJECT_DIR%" env info -e 2^>nul') do set "VENV_BIN=%%i"
   if defined VENV_BIN (
-    "%VENV_BIN%" -m words_crypt.cli %*
+    "%VENV_BIN%" -m mnemo_vault.cli %*
     exit /b %errorlevel%
   )
 )
 
-where words-crypt >nul 2>nul
+where mnemo-vault >nul 2>nul
 if %errorlevel%==0 (
-  words-crypt %*
+  mnemo-vault %*
   exit /b %errorlevel%
 )
 
-echo ERROR: poetry virtualenv not found and words-crypt not in PATH. 1>&2
+echo ERROR: poetry virtualenv not found and mnemo-vault not in PATH. 1>&2
 echo Hint: cd "%PROJECT_DIR%" ^& poetry install 1>&2
 exit /b 1

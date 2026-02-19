@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "words-crypt"
+name = "mnemo-vault"
 version = "0.1.0"
-description = "🐚 Encrypt/decrypt payloads into BIP39 words (ChaCha20-Poly1305 + scrypt), with optional zip container and cached wordlist download."
+description = "🌀 Encrypt/decrypt payloads into BIP39 words (ChaCha20-Poly1305 + scrypt), with optional zip container and cached wordlist download."
 authors = ["Alex <you@example.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{ include = "words_crypt", from = "src" }]
+packages = [{ include = "mnemo_vault", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -13,7 +13,7 @@ cryptography = "^42.0.0"
 click = "^8.1.0"
 
 [tool.poetry.scripts]
-words-crypt = "words_crypt.cli:main"
+mnemo-vault = "mnemo_vault.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"

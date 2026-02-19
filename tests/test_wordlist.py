@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from words_crypt.cli import (
+from mnemo_vault.cli import (
     load_wordlist,
     resolve_wordlist_path,
     _cached_wordlist_path,
@@ -55,8 +55,8 @@ class TestDownloadWordlist:
         mock_response.__enter__ = lambda s: s
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch("words_crypt.cli.urllib.request.urlopen", return_value=mock_response) as mock_urlopen, \
-             patch("words_crypt.cli.CACHE_DIR", tmp_path / "wordlists"):
+        with patch("mnemo_vault.cli.urllib.request.urlopen", return_value=mock_response) as mock_urlopen, \
+             patch("mnemo_vault.cli.CACHE_DIR", tmp_path / "wordlists"):
             (tmp_path / "wordlists").mkdir(parents=True, exist_ok=True)
             _download_wordlist("https://example.com/words.txt", dst)
 
@@ -73,7 +73,7 @@ class TestResolveWordlistPath:
     def test_cached_file_returned(self, tmp_path, monkeypatch):
         lang = "english"
         monkeypatch.setenv(ENV_LANGUAGE, lang)
-        monkeypatch.setattr("words_crypt.cli.CACHE_DIR", tmp_path)
+        monkeypatch.setattr("mnemo_vault.cli.CACHE_DIR", tmp_path)
 
         cached = tmp_path / f"bip39_{lang}.txt"
         cached.write_text("cached", encoding="utf-8")
@@ -84,14 +84,14 @@ class TestResolveWordlistPath:
     def test_downloads_when_not_cached(self, tmp_path, monkeypatch):
         lang = "italian"
         monkeypatch.setenv(ENV_LANGUAGE, lang)
-        monkeypatch.setattr("words_crypt.cli.CACHE_DIR", tmp_path)
+        monkeypatch.setattr("mnemo_vault.cli.CACHE_DIR", tmp_path)
 
         mock_response = MagicMock()
         mock_response.read.return_value = b"word content"
         mock_response.__enter__ = lambda s: s
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch("words_crypt.cli.urllib.request.urlopen", return_value=mock_response):
+        with patch("mnemo_vault.cli.urllib.request.urlopen", return_value=mock_response):
             result = resolve_wordlist_path(None)
 
         expected = tmp_path / f"bip39_{lang}.txt"
@@ -101,14 +101,14 @@ class TestResolveWordlistPath:
     def test_env_wordlist_url_used(self, tmp_path, monkeypatch):
         monkeypatch.setenv(ENV_LANGUAGE, "custom")
         monkeypatch.setenv(ENV_WORDLIST_URL, "https://custom.com/words.txt")
-        monkeypatch.setattr("words_crypt.cli.CACHE_DIR", tmp_path)
+        monkeypatch.setattr("mnemo_vault.cli.CACHE_DIR", tmp_path)
 
         mock_response = MagicMock()
         mock_response.read.return_value = b"data"
         mock_response.__enter__ = lambda s: s
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch("words_crypt.cli.urllib.request.urlopen", return_value=mock_response) as mock_urlopen:
+        with patch("mnemo_vault.cli.urllib.request.urlopen", return_value=mock_response) as mock_urlopen:
             resolve_wordlist_path(None)
 
         mock_urlopen.assert_called_once_with("https://custom.com/words.txt", timeout=20)

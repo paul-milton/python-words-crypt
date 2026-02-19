@@ -1,4 +1,4 @@
-# 🐚 words-crypt — (c) 2026, 🐚 The 17711 Frame <https://frame.17711.org>
+# 🌀 mnemo-vault — (c) 2026, 🌀 The 17711 Frame <https://frame.17711.org>
 # Encrypt/decrypt payloads into BIP39 words.
 # MIT License © 2026
 
@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 
 
 # =========================
-# 🐚 Config
+# 🌀 Config
 # =========================
 
 WORD_BITS = 11
@@ -34,13 +34,13 @@ SCRYPT_N = 2**14
 SCRYPT_R = 8
 SCRYPT_P = 1
 
-MAGIC = b"WZ01"  # WordZip v1 marker
+MAGIC = b"MV01"  # MnemoVault v1 marker
 
-ENV_LANGUAGE = "WORDS_CRYPT_LANGUAGE"
-ENV_WORDLIST_URL = "WORDS_CRYPT_WORDLIST_URL"
+ENV_LANGUAGE = "MNEMO_VAULT_LANGUAGE"
+ENV_WORDLIST_URL = "MNEMO_VAULT_WORDLIST_URL"
 
 DEFAULT_LANGUAGE = "french"
-CACHE_DIR = Path.home() / ".cache" / "words-crypt" / "wordlists"
+CACHE_DIR = Path.home() / ".cache" / "mnemo-vault" / "wordlists"
 
 DEFAULT_BIP39_BASE = "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/"
 DEFAULT_WORDLIST_URLS = {
@@ -81,7 +81,7 @@ CAMOUFLAGE_WORDS = {
 
 
 # =========================
-# 🐚 Wordlist (download + cache)
+# 🌀 Wordlist (download + cache)
 # =========================
 
 def _ensure_cache_dir() -> None:
@@ -129,7 +129,7 @@ def load_wordlist(path: str) -> List[str]:
 
 
 # =========================
-# 🐚 Encoding
+# 🌀 Encoding
 # =========================
 
 def bytes_to_words(data: bytes, words: List[str]) -> str:
@@ -161,7 +161,7 @@ def words_to_bytes(phrase: str, words: List[str]) -> bytes:
 
 
 # =========================
-# 🐚 Camouflage
+# 🌀 Camouflage
 # =========================
 
 def _get_language_from_wordlist_path(wordlist_path: str) -> str:
@@ -244,7 +244,7 @@ def strip_camouflage(phrase: str, words: List[str]) -> str:
 
 
 # =========================
-# 🐚 Crypto
+# 🌀 Crypto
 # =========================
 
 def kdf_scrypt(passphrase: str, salt: bytes) -> bytes:
@@ -316,11 +316,11 @@ def _read_u32(data: bytes, off: int) -> int:
 
 
 # =========================
-# 🐚 Container format
+# 🌀 Container format
 # =========================
 
 @dataclass(frozen=True)
-class WordZipEnvelope:
+class MnemoEnvelope:
     kind: str
     filename: str
     meta_json: bytes
@@ -342,9 +342,9 @@ class WordZipEnvelope:
         ])
 
     @staticmethod
-    def from_bytes(data: bytes) -> "WordZipEnvelope":
+    def from_bytes(data: bytes) -> "MnemoEnvelope":
         if len(data) < 4 or data[:4] != MAGIC:
-            raise ValueError("Not a WordZipEnvelope (bad magic)")
+            raise ValueError("Not a MnemoEnvelope (bad magic bytes)")
 
         off = 4
         header_len = _read_u32(data, off); off += 4
@@ -358,7 +358,7 @@ class WordZipEnvelope:
         if len(payload) != payload_len:
             raise ValueError("Truncated envelope payload")
 
-        return WordZipEnvelope(
+        return MnemoEnvelope(
             kind=header.get("kind", "raw"),
             filename=header.get("filename", "output.bin"),
             meta_json=meta,
@@ -367,10 +367,10 @@ class WordZipEnvelope:
 
 
 # =========================
-# 🐚 CLI (Click)
+# 🌀 CLI (Click)
 # =========================
 
-@click.group(help="🐚 words-crypt — (c) 2026, 🐚 The 17711 Frame <https://frame.17711.org>\nEncrypt/decrypt payloads into BIP39 words (default: French).")
+@click.group(help="🌀 mnemo-vault — (c) 2026, 🌀 The 17711 Frame <https://frame.17711.org>\nEncrypt/decrypt payloads into BIP39 words (default: French).")
 @click.option("--wordlist", default=None, help="Path to wordlist file. If omitted, auto-download + cache.")
 @click.option("--passphrase", default=None, help="Encryption passphrase (prompted if omitted).")
 @click.option("--passphrase-file", default=None, type=click.Path(exists=True), help="Read passphrase from file (first line, stripped).")
@@ -439,23 +439,23 @@ def cmd_encrypt(ctx, files, text, out_name, out_file, no_zip):
         # Text mode: never zip, stdout by default
         no_zip = True
         data = text.encode("utf-8")
-        env = WordZipEnvelope(kind="text", filename="message.txt", meta_json=b"{}", payload=data).to_bytes()
+        env = MnemoEnvelope(kind="text", filename="message.txt", meta_json=b"{}", payload=data).to_bytes()
     elif len(files) == 0:
         # stdin
         data = sys.stdin.buffer.read()
-        env = WordZipEnvelope(kind="raw", filename=out_name or "stdin.bin", meta_json=b"{}", payload=data).to_bytes()
+        env = MnemoEnvelope(kind="raw", filename=out_name or "stdin.bin", meta_json=b"{}", payload=data).to_bytes()
     elif len(files) == 1 and Path(files[0]).is_file():
         # Single file
         p = Path(files[0])
         data = p.read_bytes()
-        env = WordZipEnvelope(kind="raw", filename=out_name or p.name, meta_json=b"{}", payload=data).to_bytes()
+        env = MnemoEnvelope(kind="raw", filename=out_name or p.name, meta_json=b"{}", payload=data).to_bytes()
     else:
         # Multiple files/directories → tar
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tf:
             for f in files:
                 tf.add(f, arcname=Path(f).name)
-        env = WordZipEnvelope(kind="tar", filename="archive.tar.gz", meta_json=b"{}", payload=buf.getvalue()).to_bytes()
+        env = MnemoEnvelope(kind="tar", filename="archive.tar.gz", meta_json=b"{}", payload=buf.getvalue()).to_bytes()
 
     phrase = encrypt_bytes_to_words(env, _get_passphrase(ctx), _get_wordlist_path(ctx))
     if out_file:
@@ -471,7 +471,7 @@ def cmd_encrypt(ctx, files, text, out_name, out_file, no_zip):
 def cmd_decrypt(ctx, input_file, out_path):
     phrase = _read_phrase(input_file)
     data = decrypt_words_to_bytes(phrase, _get_passphrase(ctx), _get_wordlist_path(ctx))
-    env = WordZipEnvelope.from_bytes(data)
+    env = MnemoEnvelope.from_bytes(data)
 
     if env.kind == "text":
         if out_path:

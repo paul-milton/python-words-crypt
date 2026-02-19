@@ -1,6 +1,6 @@
 import struct
 import pytest
-from words_crypt.cli import bytes_to_words, words_to_bytes, WORD_BITS
+from mnemo_vault.cli import bytes_to_words, words_to_bytes, WORD_BITS
 
 
 class TestBytesToWords:

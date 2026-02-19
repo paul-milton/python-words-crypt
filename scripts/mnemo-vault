@@ -10,15 +10,15 @@ main() {
   if command -v poetry >/dev/null 2>&1; then
     venv_bin="$(poetry -C "$PROJECT_DIR" env info -e 2>/dev/null)" || true
     if [ -n "$venv_bin" ]; then
-      exec "$venv_bin" -m words_crypt.cli "$@"
+      exec "$venv_bin" -m mnemo_vault.cli "$@"
     fi
   fi
 
-  if command -v words-crypt >/dev/null 2>&1; then
-    exec words-crypt "$@"
+  if command -v mnemo-vault >/dev/null 2>&1; then
+    exec mnemo-vault "$@"
   fi
 
-  echo "ERROR: poetry virtualenv not found and words-crypt not in PATH." >&2
+  echo "ERROR: poetry virtualenv not found and mnemo-vault not in PATH." >&2
   echo "Hint: run 'cd $PROJECT_DIR && poetry install'." >&2
   exit 1
 }

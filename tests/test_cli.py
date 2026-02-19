@@ -5,7 +5,7 @@ from unittest.mock import patch
 from pathlib import Path
 from click.testing import CliRunner
 
-from words_crypt.cli import (
+from mnemo_vault.cli import (
     cli,
     SALT_LEN,
     NONCE_LEN,
@@ -38,8 +38,8 @@ def runner():
 @pytest.fixture(autouse=True)
 def mock_crypto():
     """Mock urandom + scrypt for all CLI tests."""
-    with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom), \
-         patch("words_crypt.cli.hashlib.scrypt", side_effect=_fast_scrypt):
+    with patch("mnemo_vault.cli.os.urandom", side_effect=_mock_urandom), \
+         patch("mnemo_vault.cli.hashlib.scrypt", side_effect=_fast_scrypt):
         yield
 
 

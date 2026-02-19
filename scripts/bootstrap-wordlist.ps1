@@ -1,14 +1,14 @@
 $ErrorActionPreference = "Stop"
 
-$cacheDir = Join-Path $HOME ".cache\words-crypt\wordlists"
-$language = $env:WORDS_CRYPT_LANGUAGE
+$cacheDir = Join-Path $HOME ".cache\mnemo-vault\wordlists"
+$language = $env:MNEMO_VAULT_LANGUAGE
 if ([string]::IsNullOrWhiteSpace($language)) { $language = "french" }
 $safeLang = ($language.ToLower() -replace "-", "_")
 $outFile = Join-Path $cacheDir ("bip39_{0}.txt" -f $safeLang)
 
 $defaultBase = "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039"
 $defaultUrl = "{0}/{1}.txt" -f $defaultBase, $language
-$url = $env:WORDS_CRYPT_WORDLIST_URL
+$url = $env:MNEMO_VAULT_WORDLIST_URL
 if ([string]::IsNullOrWhiteSpace($url)) { $url = $defaultUrl }
 
 New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null

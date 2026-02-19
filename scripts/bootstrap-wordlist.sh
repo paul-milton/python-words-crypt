@@ -3,17 +3,17 @@ set -euo pipefail
 
 # Downloads (and caches) the BIP39 wordlist for the configured language.
 # Uses:
-#   WORDS_CRYPT_LANGUAGE (default: french)
-#   WORDS_CRYPT_WORDLIST_URL (optional override)
+#   MNEMO_VAULT_LANGUAGE (default: french)
+#   MNEMO_VAULT_WORDLIST_URL (optional override)
 
-CACHE_DIR="${HOME}/.cache/words-crypt/wordlists"
-LANGUAGE="${WORDS_CRYPT_LANGUAGE:-french}"
+CACHE_DIR="${HOME}/.cache/mnemo-vault/wordlists"
+LANGUAGE="${MNEMO_VAULT_LANGUAGE:-french}"
 SAFE_LANG="$(echo "${LANGUAGE}" | tr '[:upper:]' '[:lower:]' | tr '-' '_' )"
 OUT="${CACHE_DIR}/bip39_${SAFE_LANG}.txt"
 
 DEFAULT_BASE="https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039"
 DEFAULT_URL="${DEFAULT_BASE}/${LANGUAGE}.txt"
-URL="${WORDS_CRYPT_WORDLIST_URL:-$DEFAULT_URL}"
+URL="${MNEMO_VAULT_WORDLIST_URL:-$DEFAULT_URL}"
 
 main() {
   mkdir -p "${CACHE_DIR}"

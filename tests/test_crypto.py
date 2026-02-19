@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch
 from cryptography.exceptions import InvalidTag
 
-from words_crypt.cli import (
+from mnemo_vault.cli import (
     kdf_scrypt,
     encrypt_bytes_to_words,
     decrypt_words_to_bytes,
@@ -33,8 +33,8 @@ def _fast_scrypt(password, *, salt, n, r, p, dklen):
 @pytest.fixture(autouse=True)
 def mock_crypto():
     """Mock urandom + scrypt for all crypto tests."""
-    with patch("words_crypt.cli.os.urandom", side_effect=_mock_urandom), \
-         patch("words_crypt.cli.hashlib.scrypt", side_effect=_fast_scrypt):
+    with patch("mnemo_vault.cli.os.urandom", side_effect=_mock_urandom), \
+         patch("mnemo_vault.cli.hashlib.scrypt", side_effect=_fast_scrypt):
         yield
 
 
